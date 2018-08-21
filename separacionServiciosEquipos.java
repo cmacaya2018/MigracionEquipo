@@ -26,26 +26,26 @@ public class separacionServiciosEquipos {
 			//Se obtienen todos los servicios.
 			List <ServicioEquipoDTO> lServicios = obtieneListaServicioEquipos_ConModelo(conn);
 			
-			conn.close();
-			conn = null;
+//			conn.close();
+//			conn = null;
 
 			for (ServicioEquipoDTO servicio : lServicios) {
 				
 				if(servicio.getModeloNC() != null && !servicio.getModeloNC().equals("")){
 					
-					conn = abreConexion("teleductos");
+//					conn = abreConexion("teleductos");
 					
 					//Se obtienen todos los equipos con sus enlaces asociados.
 					List<ServAsociadoDTO> serviciosAsociados = getServiciosAsociadosEnlace(servicio,conn);
 					
-					conn.close();
-					conn = null;
+//					conn.close();
+//					conn = null;
 					
 					System.out.println("codServicio: " +  servicio.getCodServicio());
 
 					if (serviciosAsociados.size()<= 0) {
 						
-						conn = abreConexion("teleductos");
+//						conn = abreConexion("teleductos");
 						
 						buscarDatosMigracion_ModeloEquipos_Standalone(conn, servicio);	
 						if(servicio.getMigracionId() == null){
@@ -59,12 +59,12 @@ public class separacionServiciosEquipos {
 								servicio.getCodDireccionEquipo(),servicio.getDireccionEquipo(),conn);
 						
 						conn.commit();
-						conn.close();
-						conn = null;
+//						conn.close();
+//						conn = null;
 						
 					} else {
 						
-						conn = abreConexion("teleductos");
+//						conn = abreConexion("teleductos");
 						
 						buscarDatosMigracion_ModeloEquipos(conn, servicio);	
 						if(servicio.getMigracionId() == null){
@@ -200,8 +200,8 @@ public class separacionServiciosEquipos {
 						}	
 						
 						conn.commit();
-						conn.close();
-						conn = null;
+//						conn.close();
+//						conn = null;
 					}
 					
 				}/* else {
@@ -215,6 +215,9 @@ public class separacionServiciosEquipos {
 					conn = null;
 				}*/
 			}
+			
+			conn.close();
+			conn = null;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
