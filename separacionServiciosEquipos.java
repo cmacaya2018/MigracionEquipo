@@ -25,82 +25,68 @@ public class separacionServiciosEquipos {
 
 			//Se obtienen todos los servicios.
 			List <ServicioEquipoDTO> lServicios = obtieneListaServicioEquipos_ConModelo(conn);
-			
-//			conn.close();
-//			conn = null;
 
 			for (ServicioEquipoDTO servicio : lServicios) {
 				
+				obtieneModeloEquipos(conn, servicio);
+				
+				if(servicio.getModelo() == null || servicio.getModelo().equals("")){
+					obtieneModelo_DatosMaestro(conn, servicio);
+				}
+				
 				if(servicio.getModeloNC() != null && !servicio.getModeloNC().equals("")){
-					
-//					conn = abreConexion("teleductos");
 					
 					//Se obtienen todos los equipos con sus enlaces asociados.
 					List<ServAsociadoDTO> serviciosAsociados = getServiciosAsociadosEnlace(servicio,conn);
 					
-//					conn.close();
-//					conn = null;
-					
-					System.out.println("codServicio: " +  servicio.getCodServicio());
+					buscarDatosMigracion_Equipos(conn, serviciosAsociados.size()<= 0? "Equipamiento_Standalone":"Equipamiento", servicio);
+					if(servicio.getMigracionId() == null){
+						buscarDatosMigracion_CaractValor(conn, servicio);
+					}
 
 					if (serviciosAsociados.size()<= 0) {
 						
-//						conn = abreConexion("teleductos");
-						
-						buscarDatosMigracion_ModeloEquipos_Standalone(conn, servicio);	
-						if(servicio.getMigracionId() == null){
-							buscarDatosMigracion_CaractValor(conn, servicio);
-						}
-						
-						buscarDireccionDestinoEquipo(conn, servicio);
-						
 						insertServicioMigracionEquipo(servicio,null,servicio.getModelo(),servicio.getModeloNC(),
 								servicio.getMigracionId(),servicio.getCodProducto(),"ERROR","EQUIPO SIN ENLACE ASOCIADO",
-								servicio.getCodDireccionEquipo(),servicio.getDireccionEquipo(),conn);
-						
-						conn.commit();
-//						conn.close();
-//						conn = null;
+								servicio.getCodDireccionEnlaceDestino(),servicio.getDireccionEnlaceDestino(),conn);
 						
 					} else {
 						
-//						conn = abreConexion("teleductos");
+						String clienteEnlace = getCliente(serviciosAsociados.get(0).getCodServicio(), conn);
+						String clienteEquipo = getCliente(servicio.getCodServicioEquipo(), conn);
 						
-						buscarDatosMigracion_ModeloEquipos(conn, servicio);	
-						if(servicio.getMigracionId() == null){
-							buscarDatosMigracion_CaractValor(conn, servicio);
-						}
-						
-						buscarDireccionEquipo(conn, servicio);
+						buscarEnlaceAsociadoAEquipo(conn, serviciosAsociados.get(0).getCodServicio(), servicio);
+						buscarEnlacesAsociadosNuevos(conn, serviciosAsociados.get(0).getCodServicio(), servicio.getCodServicioMigrado(), servicio);
 								
-						if(servicio.getModelo().contains("SWITCH")){
+						if(servicio.getProductCode() != null && (servicio.getProductCode().equals("SWTCHL2") || servicio.getProductCode().equals("SWTCHL3"))){
 							
 							if(serviciosAsociados.size() == 1){
 								
-								String clienteEnlace = getCliente(serviciosAsociados.get(0).getCodServicio(), conn);
-								String clienteEquipo = getCliente(servicio.getCodServicioEquipo(), conn);
-								buscarEnlaceAsociadoAEquipo(conn, serviciosAsociados.get(0).getCodServicio(), servicio);
-								buscarEnlacesAsociadosNuevos(conn, serviciosAsociados.get(0).getCodServicio(), servicio.getCodServicioMigrado(), servicio);
-								
 								if (clienteEnlace != null && clienteEquipo != null && clienteEnlace.equals(clienteEquipo)) {
 							
-									if(servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(0).getCodDireccionEnlaceOrigen()) ||
-											servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(0).getCodDireccionEnlaceDestino())){
+									if(servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(0).getCodDireccionEnlaceOrigen()) ||
+											servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(0).getCodDireccionEnlaceDestino())){
 									
 										insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
-											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", servicio.getCodDireccionEquipo(), 
-												servicio.getDireccionEquipo(),conn);
+											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", 
+											servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 									
 									} else {
 										
 										//EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE
-										insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE",null,null,conn);
+										insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+												servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+												"ERROR","EQUIPO CON DIRECCION DE ORIGEN DIFERENTE A LA DEL ENLACE",
+												servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 									}
 									
 								} else {
 									
 									//EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE
-									insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",null,null,conn);
+									insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+											"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",
+											servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 								}
 								
 							} else if(serviciosAsociados.size() == 2){
@@ -108,112 +94,121 @@ public class separacionServiciosEquipos {
 								if(esServicioPrincipal(serviciosAsociados.get(0).getCodServicio(), 
 										serviciosAsociados.get(1).getCodServicio(), conn)){
 									
-									String clienteEnlace = getCliente(serviciosAsociados.get(0).getCodServicio(), conn);
-									String clienteEquipo = getCliente(servicio.getCodServicioEquipo(), conn);
-									buscarEnlaceAsociadoAEquipo(conn, serviciosAsociados.get(0).getCodServicio(), servicio);
-									buscarEnlacesAsociadosNuevos(conn, serviciosAsociados.get(0).getCodServicio(), servicio.getCodServicioMigrado(), servicio);
-									
 									if (clienteEnlace != null && clienteEquipo != null && clienteEnlace.equals(clienteEquipo)) {
 									
-										if(servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(0).getCodDireccionEnlaceOrigen()) ||
-												servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(0).getCodDireccionEnlaceDestino())){
+										if(servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(0).getCodDireccionEnlaceOrigen()) ||
+												servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(0).getCodDireccionEnlaceDestino())){
 											
 											insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
-													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", servicio.getCodDireccionEquipo(), 
-														servicio.getDireccionEquipo(),conn);
+													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", 
+													servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 											
 										} else {
 											
-											//EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE
-											insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE",null,null,conn);
+											//EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE											
+											insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+													"ERROR","EQUIPO CON DIRECCION DE ORIGEN DIFERENTE A LA DEL ENLACE",
+													servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 										}
 										
 									} else {
 										
 										//EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE
-										insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",null,null,conn);
+										insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+												servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+												"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",
+												servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 									}
 								
 								} else if(esServicioPrincipal(serviciosAsociados.get(1).getCodServicio(), 
 										serviciosAsociados.get(0).getCodServicio(), conn)){
 									
-									String clienteEnlace = getCliente(serviciosAsociados.get(1).getCodServicio(), conn);
-									String clienteEquipo = getCliente(servicio.getCodServicioEquipo(), conn);
+									clienteEnlace = getCliente(serviciosAsociados.get(1).getCodServicio(), conn);
+
 									buscarEnlaceAsociadoAEquipo(conn, serviciosAsociados.get(1).getCodServicio(), servicio);
 									buscarEnlacesAsociadosNuevos(conn, serviciosAsociados.get(1).getCodServicio(), servicio.getCodServicioMigrado(), servicio);
 									
 									if (clienteEnlace != null && clienteEquipo != null && clienteEnlace.equals(clienteEquipo)) {
 										
-										if(servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(1).getCodDireccionEnlaceOrigen()) ||
-												servicio.getCodDireccionEquipo().equals(serviciosAsociados.get(1).getCodDireccionEnlaceDestino())){
+										if(servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(1).getCodDireccionEnlaceOrigen()) ||
+												servicio.getCodDireccionEnlaceOrigen().equals(serviciosAsociados.get(1).getCodDireccionEnlaceDestino())){
 											
 											insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
-													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", servicio.getCodDireccionEquipo(), 
-														servicio.getDireccionEquipo(),conn);
+													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", 
+													servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 											
 										} else {
 											
-											//EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE
-											insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE",null,null,conn);
+											//EQUIPO CON DIRECCION DIFERENTE A LA DEL ENLACE											
+											insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+													servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+													"ERROR","EQUIPO CON DIRECCION DE ORIGEN DIFERENTE A LA DEL ENLACE",
+													servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 										}
 									
 									} else {
 									
 										//EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE
-										insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",null,null,conn);
+										insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+												servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+												"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",
+												servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 									}
 									
 								} else {
 									
+									//SERVICIOS ASOCIADOS NO SON UN SERVICIO PRINCIPAL ENTRE ELLOS									
+									insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+											"ERROR","SERVICIOS ASOCIADOS NO SON UN SERVICIO PRINCIPAL ENTRE ELLOS",
+											servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 								}
 								
 							} else if(serviciosAsociados.size() > 2){
 								
 								//migrar Switch como offering “Equipamiento” (familia Otros de NC). PENDIENTE IT7
+								//EQUIPO CON MAS DE 2 SERVICIOS ASOCIADOS. (PENDIENTE IT7) 								
+								insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+										servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+										"ERROR","EQUIPO CON MAS DE 2 SERVICIOS ASOCIADOS. (PENDIENTE IT7)",
+										servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 							}
 							
-						} else if(servicio.getModelo().contains("Router") || servicio.getModelo().contains("ROUTER")){
+						} else if(servicio.getProductCode() != null && (servicio.getProductCode().equals("ROUTR") || servicio.getProductCode().equals("RTRFIREW") ||
+								servicio.getProductCode().equals("RTR_GW"))){
 							
 							if(serviciosAsociados.size() == 1){
-								
-								String clienteEnlace = getCliente(serviciosAsociados.get(0).getCodServicio(), conn);
-								String clienteEquipo = getCliente(servicio.getCodServicioEquipo(), conn);
-								buscarEnlaceAsociadoAEquipo(conn, serviciosAsociados.get(0).getCodServicio(), servicio);
-								buscarEnlacesAsociadosNuevos(conn, serviciosAsociados.get(0).getCodServicio(), servicio.getCodServicioMigrado(), servicio);
 								
 								if (clienteEnlace != null && clienteEquipo != null && clienteEnlace.equals(clienteEquipo)) {
 								
 									insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
-											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", servicio.getCodDireccionEquipo(), 
-											servicio.getDireccionEquipo(),conn);
+											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),"OK","OK", 
+											servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 									
 								} else {
 									
-									//EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE
-									insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",null,null,conn);
+									//EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE									
+									insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+											servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+											"ERROR","EQUIPO CON CLIENTE DIFERENTE AL DEL ENLACE",
+											servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 								}
 								
 							} else if(serviciosAsociados.size() > 1){
 								
 								//migrar Switch como offering “Equipamiento” (familia Otros de NC). PENDIENTE IT7
+								//EQUIPO CON MAS DE 1 SERVICIO ASOCIADO. (PENDIENTE IT7) 
+								insertServicioMigracionEquipo(servicio,servicio.getCodServicioMigrado(),servicio.getModelo(),
+										servicio.getModeloNC(),servicio.getMigracionId(),servicio.getCodProducto(),
+										"ERROR","EQUIPO CON MAS DE 1 SERVICIO ASOCIADO. (PENDIENTE IT7)",
+										servicio.getCodDireccionEnlaceOrigen(), servicio.getDireccionEnlaceOrigen(),conn);
 							}
 						}	
-						
-						conn.commit();
-//						conn.close();
-//						conn = null;
 					}
 					
-				}/* else {
-					
-					conn = abreConexion("teleductos");
-					
-					insertServicioMigracionEquipo(servicio,null,null,null,null,servicio.getCodProducto(),"ERROR","EQUIPO SIN MODELO EN TABLA DE CONVERION NC",null,null,conn);
-					
-					conn.commit();
-					conn.close();
-					conn = null;
-				}*/
+					conn.commit();					
+				}
 			}
 			
 			conn.close();
@@ -224,42 +219,6 @@ public class separacionServiciosEquipos {
 		}
 		
 		System.out.println("Fin del proceso");		
-	}
-
-	private static boolean esServicioMigracion(ServicioEquipoDTO servicio, Connection conn) {
-			
-		boolean esServicioMigrado = false;
-		
-		try {
-			String sql =
-				"SELECT Sm.cod_servicio, sm.COD_SERVICIO_MIGRADO\n" +
-				"  FROM teleductos.servicio_migracion2 sm\n" + 
-				" WHERE sm.MIGRACION_ID IN\n" + 
-				"       ('20000962', '20000871', '20000871', '10000045', '10001193',\n" + 
-				"        '10001140', '10001474', '10002155', '10002295', '10001634',\n" + 
-				"        '10002504', '10002437', '10002014', '10002014', '10002357')\n" + 
-				"   AND sm.COD_SERVICIO = ?";
-
-			PreparedStatement stmt = conn.prepareStatement(sql);
-			stmt.setString(1, servicio.getCodServicio());
-
-			ResultSet rs = stmt.executeQuery();
-	
-			if (rs.next()) {
-				esServicioMigrado = true;
-			}
-			
-			rs.close();
-			rs = null;
-			
-			stmt.close();
-			stmt = null;
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} //codigo servicio
-		
-		return esServicioMigrado;
 	}
 	
 	private static List<ServAsociadoDTO> getServiciosAsociadosEnlace(ServicioEquipoDTO servicio, Connection conn) {
@@ -361,49 +320,9 @@ public class separacionServiciosEquipos {
 		return cliente;
 	}
 	
-	private static boolean esEquipoAsociado(ServicioEquipoDTO servicio, Connection conn) {
-
-		boolean esEquipoAsociado = false;
-		
-		try {
-			
-			String sql =
-					"SELECT se.COD_SERVICIO, me.COD_MODELO, me.NOMBRE modelo\n" +
-					"  FROM teleductos.SERVICIO_EQUIPO    se,\n" + 
-					"       teleductos.MODELO_EQUIPO      me,\n" + 
-					"       teleductos.EQUIPO_INSTALACION ei\n" + 
-					" WHERE se.COD_EQUIPO = ei.COD_EQUIPO\n" + 
-					"   AND ei.COD_MODELO = me.COD_MODELO\n" + 
-					"   AND se.COD_SERVICIO = ?";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);
-			stmt.setString(1, servicio.getCodServicio());
-		
-			ResultSet rs = stmt.executeQuery();
-	
-			if (rs.next()) {
-					esEquipoAsociado = true;
-			}
-
-			
-			rs.close();
-			rs = null;
-			
-			stmt.close();
-			stmt = null;
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-		
-		return esEquipoAsociado;
-	}
-	
 	private static void insertServicioMigracionEquipo(ServicioEquipoDTO servicio, String codServicioMigrado, String  modeloSge, String modeloNC,
 			String migrationId, String codProducto, String estado, String descripcion, 
 			String codDireccion, String direccion, Connection conn) {
-		
-		System.out.println("insertServicioMigracionEquipo");
 		
 		try {
 			
@@ -477,32 +396,28 @@ public class separacionServiciosEquipos {
 		try {
 			String sql =
 				"SELECT" +    
-				"	  S.cod_servicio," +      
+				"	  S.cod_servicio," +   
+				"	  s.cod_direccion_destino COD_DESTINO," +
+				"	  mdDestino.direccion DESTINO," +
+				"	  s.cod_direccion_origen COD_ORIGEN," +
+				"	  mdOrigen.direccion ORIGEN," + 
 				"	  PD.COD_PRODUCTO," +     
-				"	  PC.NOMBRE NOMBRE_PRODUCTO," + 
-				"	  me.COD_MODELO," + 
-				"	  me.NOMBRE modelo," + 
-				"	  TV.VALOR modeloNC," +
-				"	  EI.NUMERO_SERIE" + 
+				"	  PC.NOMBRE NOMBRE_PRODUCTO" + 
 				"	FROM" +    
-				"	  TELEDUCTOS.SERVICIO S," +     
+				"	  TELEDUCTOS.SERVICIO S," + 
+				"	  COMUN.MAE_DIRECCIONES mdDestino," +
+				"	  COMUN.MAE_DIRECCIONES mdOrigen," + 
 				"	  comun.PRODUCTO_DETALLE pd," +     
-				"	  comun.PRODUCTO_CLIENTE pc," + 
-				"	  teleductos.SERVICIO_EQUIPO se," + 
-				"	  teleductos.MODELO_EQUIPO me," + 
-				"	  teleductos.EQUIPO_INSTALACION ei," + 
-				"	  COMUN.TABLA_VALORES TV" + 
+				"	  comun.PRODUCTO_CLIENTE pc" + 
 				"	WHERE" +     
 				"	      pd.COD_PRODUCTO_DETALLE = s.COD_PRODUCTO_CLIENTE" +     
 				"	  AND S.ESTADO_SERVICIO NOT IN ('ANULA','RETIRA')" +     
-				"	  AND S.FEC_FIN_VIGENCIA > SYSDATE" +     
+				"	  AND S.FEC_FIN_VIGENCIA > SYSDATE" + 
+				"	  AND S.FEC_FIN_VIGENCIA = (SELECT MAX(S2.FEC_FIN_VIGENCIA) FROM TELEDUCTOS.SERVICIO S2 WHERE S2.COD_SERVICIO = S.COD_SERVICIO)" +
+				"	  AND s.cod_direccion_destino = mdDestino.cod_direccion" +
+				"	  AND s.cod_direccion_origen = mdOrigen.cod_direccion" +
 				"	  AND Pd.COD_PRODUCTO = pc.COD_PRODUCTO" +     
-				"	  AND pc.GENERA_FLUJO_EQUIPOS = 'SI'" + 
-				"	  AND se.COD_EQUIPO = ei.COD_EQUIPO" + 
-				"	  AND ei.COD_MODELO = me.COD_MODELO" + 
-				"	  AND se.COD_SERVICIO = s.cod_servicio" + 
-				"	  AND TV.NOMBRE_TABLA = 'TRADUCCION_EQUIPOS'" +
-				"	  AND tv.COD_VALOR = me.nombre";
+				"	  AND pc.GENERA_FLUJO_EQUIPOS = 'SI'";
 
 			PreparedStatement stmt = conn.prepareStatement(sql);
 			ResultSet rs = stmt.executeQuery();
@@ -512,24 +427,122 @@ public class separacionServiciosEquipos {
 				ServicioEquipoDTO servicio = new ServicioEquipoDTO();
 				
 				servicio.setCodServicio(rs.getString("COD_SERVICIO"));
+				servicio.setCodDireccionEnlaceDestino(rs.getString("COD_DESTINO"));
+				servicio.setDireccionEnlaceDestino(rs.getString("DESTINO"));
+				servicio.setCodDireccionEnlaceOrigen(rs.getString("COD_ORIGEN"));
+				servicio.setDireccionEnlaceOrigen(rs.getString("ORIGEN"));
 				servicio.setCodProducto(rs.getString("COD_PRODUCTO"));
-				servicio.setNombreProducto(rs.getString("NOMBRE_PRODUCTO"));
-				servicio.setModelo(rs.getString("modelo"));				
+				servicio.setNombreProducto(rs.getString("NOMBRE_PRODUCTO"));				
 				servicio.setCodServicioEquipo(rs.getString("COD_SERVICIO"));
-				servicio.setCodModelo(rs.getString("COD_MODELO"));
-				servicio.setModeloNC(rs.getString("modeloNC"));
-				servicio.setNumeroSerie(rs.getString("NUMERO_SERIE"));
 				
 				lServicios.add(servicio);				
 			}
 			
+			stmt.close();
+			stmt = null;
+			
 			rs.close();
+			rs = null;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} 
 		
 		return lServicios;
+	}
+	
+	private static void obtieneModeloEquipos(Connection conn, ServicioEquipoDTO equipo) {
+		
+		try {
+			String sql =
+				"SELECT " + 
+				"  me.COD_MODELO, " +   
+				"  me.NOMBRE modelo, " +   
+				"  TV.VALOR modeloNC, " + 
+				"  EI.NUMERO_SERIE " +   
+				" FROM " + 
+				"  TELEDUCTOS.SERVICIO S, " + 
+				"  teleductos.SERVICIO_EQUIPO se, " + 
+				"  teleductos.MODELO_EQUIPO me, " + 
+				"  teleductos.EQUIPO_INSTALACION ei, " +   
+				"  COMUN.TABLA_VALORES TV " +   
+				" WHERE " + 
+				"	S.COD_SERVICIO = ? " + 
+				"  AND S.ESTADO_SERVICIO NOT IN ('ANULA','RETIRA') " +       
+				"  AND S.FEC_FIN_VIGENCIA > SYSDATE " + 
+				"  AND S.FEC_FIN_VIGENCIA = (SELECT MAX(S2.FEC_FIN_VIGENCIA) FROM TELEDUCTOS.SERVICIO S2 WHERE S2.COD_SERVICIO = S.COD_SERVICIO) " +  
+				"  AND se.COD_SERVICIO = s.cod_servicio " + 
+				"  AND se.COD_EQUIPO = ei.COD_EQUIPO " + 
+				"  AND ei.COD_MODELO = me.COD_MODELO " + 
+				"  AND TV.NOMBRE_TABLA = 'TRADUCCION_EQUIPOS' " +  
+				"  AND tv.COD_VALOR = me.nombre";
+
+			PreparedStatement stmt = conn.prepareStatement(sql);
+			stmt.setString(1, equipo.getCodServicio());
+			
+			ResultSet rs = stmt.executeQuery();
+	
+			while (rs.next()) {				
+				equipo.setModelo(rs.getString("modelo"));
+				equipo.setCodModelo(rs.getString("COD_MODELO"));
+				equipo.setModeloNC(rs.getString("modeloNC"));
+				equipo.setNumeroSerie(rs.getString("NUMERO_SERIE"));				
+			}
+			
+			stmt.close();
+			stmt = null;
+			
+			rs.close();
+			rs = null;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} 
+	}
+	
+	private static void obtieneModelo_DatosMaestro(Connection conn, ServicioEquipoDTO equipo) {
+		
+		try {
+			String sql =
+				"select " +    
+				"	cv.cod_valor cod_modelo, " +
+				"	cv.nombre modelo, " +
+				"	TV.VALOR modeloNC " +    
+				" from teleductos.servicio s, " +   
+				"	comun.producto_valor pv, " +   
+				"	comun.caracteristica_valor cv, " + 
+				"    COMUN.TABLA_VALORES TV " + 
+				" where S.ESTADO_SERVICIO NOT IN ('ANULA','RETIRA') " +     
+				"  AND S.FEC_FIN_VIGENCIA > SYSDATE " +   
+				"  AND S.FEC_FIN_VIGENCIA = (SELECT MAX(S2.FEC_FIN_VIGENCIA) FROM TELEDUCTOS.SERVICIO S2 WHERE S2.COD_SERVICIO = S.COD_SERVICIO) " +   
+				"  AND pv.cod_producto = s.COD_PRODUCTO_CLIENTE " +   
+				"  AND cv.cod_valor = pv.cod_valor " +   
+				"  AND cv.cod_caracteristica in (424,1838,1939,418,2018,2019,2118,2119,2120," +
+				"  2278,2279,2280,2498,1841,2098,1839,2599,1492,1504,1759,1498,1758,420,422,2798,3038) " + 
+				"  AND TV.NOMBRE_TABLA = 'TRADUCCION_EQUIPOS' " +   
+				"  AND tv.COD_VALOR = cv.nombre " + 
+				"  AND s.COD_SERVICIO = ?";
+
+			PreparedStatement stmt = conn.prepareStatement(sql);
+			stmt.setString(1, equipo.getCodServicio());
+			
+			ResultSet rs = stmt.executeQuery();
+	
+			while (rs.next()) {				
+				equipo.setModelo(rs.getString("modelo"));
+				equipo.setCodModelo(rs.getString("COD_MODELO"));
+				equipo.setModeloNC(rs.getString("modeloNC"));				
+			}
+			
+			stmt.close();
+			stmt = null;
+			
+			rs.close();
+			rs = null;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} 
 	}
 
 	private static void limpiaTablaEquipos(Connection conn) {
@@ -542,6 +555,9 @@ public class separacionServiciosEquipos {
 
 			PreparedStatement stmt = conn.prepareStatement(sql);
 			stmt.executeUpdate();
+			
+			stmt.close();
+			stmt = null;
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -570,141 +586,13 @@ public class separacionServiciosEquipos {
 		return conn;
 	}
 	
-	private static void buscarModeloSGE(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-
-				"SELECT"
-				+"    se.COD_SERVICIO, me.COD_MODELO, me.NOMBRE modelo"
-				+" FROM"
-				+"    teleductos.SERVICIO_EQUIPO se,"
-				+"    teleductos.MODELO_EQUIPO me,"
-				+"    teleductos.EQUIPO_INSTALACION ei"
-				+" WHERE"
-				+"    se.COD_EQUIPO = ei.COD_EQUIPO"
-				+"    AND ei.COD_MODELO = me.COD_MODELO"
-				+"       AND se.COD_SERVICIO = " + equipo.getCodServicioEquipo();
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);		
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {
-				equipo.setModelo(rs.getString("modelo"));				
-				equipo.setCodServicioEquipo(rs.getString("COD_SERVICIO"));
-				equipo.setCodModelo(rs.getString("COD_MODELO"));
-			}
-			
-			stmt.close();
-			stmt = null;
-			
-			rs.close();
-			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private static void buscarModeloNC(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-
-				"SELECT TV.VALOR " +
-				"FROM COMUN.TABLA_VALORES TV " +
-				"WHERE TV.NOMBRE_TABLA = 'TRADUCCION_EQUIPOS' " +
-				"AND tv.COD_VALOR = ?";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);
-			stmt.setString(1, equipo.getModelo());
-			
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {	
-				equipo.setModeloNC(rs.getString("VALOR"));		
-			}
-			
-			stmt.close();
-			stmt = null;
-			
-			rs.close();
-			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private static void buscarDireccionEquipo(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-				" SELECT s.cod_direccion_origen COD_ORIGEN, mdOrigen.direccion ORIGEN" + 
-				" FROM teleductos.servicio s, COMUN.mae_direcciones mdOrigen" + 
-				" WHERE s.COD_SERVICIO = ?" + 
-				" and s.cod_direccion_origen = mdOrigen.cod_direccion";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);	
-			stmt.setString(1, equipo.getCodServicioEquipo());
-			
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {
-				
-				equipo.setCodDireccionEquipo(rs.getString("COD_ORIGEN"));
-				equipo.setDireccionEquipo(rs.getString("ORIGEN"));
-			}
-			
-			stmt.close();
-			stmt = null;
-			
-			rs.close();
-			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private static void buscarDireccionDestinoEquipo(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-				" SELECT s.cod_direccion_destino COD_DESTINO, mdDestino.direccion DESTINO" + 
-				" FROM teleductos.servicio s, COMUN.mae_direcciones mdDestino" + 
-				" WHERE s.COD_SERVICIO = ?" + 
-				" and s.cod_direccion_destino = mdDestino.cod_direccion";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);	
-			stmt.setString(1, equipo.getCodServicioEquipo());
-			
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {
-				
-				equipo.setCodDireccionEquipo(rs.getString("COD_DESTINO"));
-				equipo.setDireccionEquipo(rs.getString("DESTINO"));
-			}
-			
-			stmt.close();
-			stmt = null;
-			
-			rs.close();
-			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
 	private static void buscarEnlaceAsociadoAEquipo(Connection conn, String codServicio, ServicioEquipoDTO servicio) {
 		
 		try {
 			String sql =
 				" select sm.cod_servicio_migrado, sm.migracion_id" +  
 				" from teleductos.servicio_migracion2 sm" +  
-				" where sm.migracion_id in ('10000045','10001193','10001255','10001255')" + 
+				" where sm.migracion_id in ('10000045','10001193','10001255')" + 
 				" and sm.cod_servicio = ?";
 			
 			PreparedStatement stmt = conn.prepareStatement(sql);	
@@ -752,8 +640,6 @@ public class separacionServiciosEquipos {
 				productosAsociados = productosAsociados + rs.getString("cod_servicio_migrado") + ";";
 			}
 			
-			System.out.println("Associated Products: " + productosAsociados);
-			
 			if(productosAsociados.length() > 0){
 				servicio.setAssociatedProduct(productosAsociados.substring(0, (productosAsociados.length()-1)));
 			} else {
@@ -771,45 +657,16 @@ public class separacionServiciosEquipos {
 		} 
 	}
 	
-	private static void buscarDatosMigracion_ModeloEquipos(Connection conn, ServicioEquipoDTO equipo) {
+	private static void buscarDatosMigracion_Equipos(Connection conn, String familiaPoc, ServicioEquipoDTO equipo) {
 		
 		try {
 			String sql =
 				"select pm.migration_id, pm.offering, pm.product_code from comun.poc_migracion pm " +
-				"where pm.poc_familia = 'Equipamiento' and pm.cod_producto = ?";
+				"where pm.poc_familia = ? and pm.producto = ?";
 			
 			PreparedStatement stmt = conn.prepareStatement(sql);	
-			stmt.setString(1, equipo.getCodModelo());
-			
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {
-				
-				equipo.setMigracionId(rs.getString("migration_id"));
-				equipo.setOffering(rs.getString("offering"));
-				equipo.setProductCode(rs.getString("product_code"));
-			}
-			
-			stmt.close();
-			stmt = null;
-			
-			rs.close();
-			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private static void buscarDatosMigracion_ModeloEquipos_Standalone(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-				"select pm.migration_id, pm.offering, pm.product_code from comun.poc_migracion pm " +
-				"where pm.poc_familia = 'Equipamiento_Standalone' and pm.cod_producto = ?";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);	
-			stmt.setString(1, equipo.getCodModelo());
+			stmt.setString(1, familiaPoc);
+			stmt.setString(2, equipo.getModelo());
 			
 			ResultSet rs = stmt.executeQuery();			
 	
@@ -846,15 +703,7 @@ public class separacionServiciosEquipos {
 				"	  AND S.FEC_FIN_VIGENCIA = (SELECT MAX(S2.FEC_FIN_VIGENCIA) FROM TELEDUCTOS.SERVICIO S2 WHERE S2.COD_SERVICIO = S.COD_SERVICIO)" + 
 				"	  AND pv.cod_producto = s.COD_PRODUCTO_CLIENTE" + 
 				"	  AND cv.cod_valor = pv.cod_valor" + 
-				/*"	  AND cv.nombre in (" + 
-				"	    'Cisco 861', 'Cisco 881', 'Cisco 2921', 'CISCO 861-K9', 'CISCO 891-K9', 'CISCO 2901/K9', 'CISCO 2921/K9', 'WS-C2960-24PC-S', 'WS-C2960-48PST-S'," +  
-				"	'AIR-CT2504-50-K9', 'EHWIC-4ESG', 'CISCO2901-SEC/K9', 'CISCO2921-SEC/K9', 'WS-C2960-24PC-S', 'CISCO891/K9', 'AIR-CT2504-15-K9'," +  
-				"	'AIR-CT2504-25-K9', 'AIR-CT2504-5-K9', 'WS-C2960-8TC-S', 'WS-C2960-48TC-S', 'CISCO2901-SEC/K9', 'CISCO2921-SEC/K9', 'WS-C2960-48PST-S'," +  
-				"	'WS-C2960-8TC-S ', 'WS-C2960-48TC-S', 'CISCO 881-V-K9', 'CISCO 1811', 'CISCO 2811', 'C3925-SEC/K9', 'FORTINET FG-500D', 'FORTINET FG-500D'," +  
-				"	'FORTINET FG-300D', 'C891F-K9', 'CISCO3925-SEC/K9', 'WS-C2960C-8TC-S', 'WS-C2960+48TC-S', 'C881-k9 + PoE', 'C891F-K9', 'C891-k9 + PoE'," +  
-				"	'3850-24-S-E', 'WS-C2960X-24TS-LL', 'WS-C2960X-24PS-L', 'WS-C2960C-12PC-L  (CMP-DIN-MN)', 'WS-C3650-24TS-E', 'WS-C3650-24TS-S'," +  
-				"	'WS-C3650-24TD-E', 'ISR4451-X-Sec/K9', 'Meraki MR33-HW', 'WS-C2960X-24TS-LL', 'Cisco 3945-HSEC/K9', 'WS-C2960x-48TD-L')" + */
-				"	  AND pm.cod_producto = cv.cod_valor" + 
+				"	  AND pm.producto = cv.nombre" + 
 				"	  AND s.COD_SERVICIO = ?";
 			
 			PreparedStatement stmt = conn.prepareStatement(sql);	
@@ -874,34 +723,6 @@ public class separacionServiciosEquipos {
 			
 			rs.close();
 			rs = null;
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} 
-	}
-	
-	private static void buscarDireccionEnlace(Connection conn, ServicioEquipoDTO equipo) {
-		
-		try {
-			String sql =
-				" SELECT s.cod_direccion_origen COD_ORIGEN, mdOrigen.direccion ORIGEN, s.cod_direccion_destino COD_DESTINO, mdDestino.direccion DESTINO" + 
-				" FROM teleductos.servicio s, COMUN.mae_direcciones mdOrigen, COMUN.mae_direcciones mdDestino" + 
-				" WHERE s.COD_SERVICIO = ?" +  
-				" and s.cod_direccion_origen = mdOrigen.cod_direccion" + 
-				" and s.cod_direccion_destino = mdDestino.cod_direccion";
-			
-			PreparedStatement stmt = conn.prepareStatement(sql);	
-			stmt.setString(1, equipo.getCodServicio());
-			
-			ResultSet rs = stmt.executeQuery();			
-	
-			while (rs.next()) {
-				
-				equipo.setCodDireccionEnlaceOrigen(rs.getString("COD_ORIGEN"));
-				equipo.setDireccionEnlaceOrigen(rs.getString("ORIGEN"));
-				equipo.setCodDireccionEnlaceDestino(rs.getString("COD_DESTINO"));
-				equipo.setDireccionEnlaceDestino(rs.getString("DESTINO"));
-			}
 
 		} catch (SQLException e) {
 			e.printStackTrace();
